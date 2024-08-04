@@ -3,4 +3,11 @@ name = "mavir"
 version = "0.1.0"
 edition = "2021"
 
+[build-dependencies]
+cc="*"
+
 [dependencies]
+clap = { version = "4.5.13", features = ["derive"] }
+derive_builder = "0.20.0"
+tree-sitter = "0.22.6"
+tree-sitter-java = "0.21.0"
