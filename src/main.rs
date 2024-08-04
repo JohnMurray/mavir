@@ -4,7 +4,8 @@ extern crate derive_builder;
 mod parse;
 
 use clap::Parser;
-
+use env_logger;
+use log::LevelFilter;
 
 /// Generates AutoValue classes for given Java files. Outputs generated code as a source JAR.
 #[derive(clap::Parser, Debug)]
@@ -20,24 +21,21 @@ struct Args {
     #[arg(short, long)]
     output_path: String,
 
-    /// Print Verbose output
+    /// Print Verbose output. This can also be configured with 'RUST_LOG=debug'
     #[arg(short, long)]
     verbose: bool,
 }
 
 
 fn main() {
+    // Parse the CLI arguments and configure the log-level
     let args = Args::parse();
+    let mut builder = env_logger::builder();
     if args.verbose {
+        builder.filter_level(LevelFilter::Debug);
         println!("{:?}", args);
     }
+    builder.init();
 
     parse::parse_file(args.file_paths[0].as_str());
-
-    // let mut parser = Parser::new();
-    // parser.set_language(&tree_sitter_java::language()).expect("Error loading Java grammar");
-    // let source_code = "class HelloWorld { public static void main(String[] Args) { System.out.println(\"Hello, World!\"); } }";
-    // let mut tree = parser.parse(source_code, None).unwrap();
-    // let root_node = tree.root_node();
-    // println!("{}", root_node.to_sexp());
 }
