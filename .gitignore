@@ -1,2 +1,6 @@
+# Build Artifacts
 /target
+
+# Editor Files
 .idea/
+*.iml
