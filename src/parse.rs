@@ -2,12 +2,12 @@ use derive_builder::Builder;
 use tree_sitter::{Node, Parser, Query, QueryCursor, TreeCursor};
 
 use std::fs;
+use log::debug;
 
-pub struct ParseState {}
-
-#[derive(Debug, Builder, Default)]
-pub struct AutoValueClass {
-    class_name: String,
+pub struct ParseState {
+    package_name: String,
+    import_statements: Vec<String>,
+    class_declarations: Vec<ClassDeclarationState>,
 }
 
 pub enum ParseError {
@@ -37,94 +37,20 @@ pub fn parse_file(file_path: &str) -> Result<ParseState> {
 
     let package_name = collect_package(&tree, &source_code)?;
     println!("Package name: {}", package_name);
-    collect_annotations(&tree, &source_code);
+    let import_statements = collect_import_statements(&tree, &source_code);
+    // collect_annotations(&tree, &source_code);
+    println!("---------");
+    let class_declarations = collect_classes(&tree, &source_code)?;
     println!("---------");
 
-    // let mut cursor = tree.walk();
-    // let mut state = CursorState::default();
-    // traverse_tree(&mut cursor, &source_code, 0, &mut state);
+    Ok(ParseState {
+        package_name,
+        import_statements,
+        class_declarations,
+    })
 
-    // TODO: Finalize
-    Ok(ParseState {})
-
-    // let source_code = "class HelloWorld { public static void main(String[] Args) { System.out.println(\"Hello, World!\"); } }";
-    // let mut tree = parser.parse(source_code, None).unwrap();
-    // let root_node = tree.root_node();
-    // println!("{}", root_node.to_sexp());
 }
 
-#[derive(Debug, Builder, Default)]
-struct ClassDeclarationState {
-    name: String,
-    autovalue_class: bool,
-}
-
-#[derive(Default)]
-struct CursorState {
-    classes: Vec<ClassDeclarationStateBuilder>,
-
-    final_classes: Vec<ClassDeclarationState>,
-}
-
-/*
-// fn traverse_tree(cursor: &mut TreeCursor, source: &str, depth: usize, state: &mut CursorState) -> Result<()> {
-//     loop {
-//         // print_node(cursor, source, depth);
-//
-//         // If a node is a class declaration, register a state builder
-//         let node = cursor.node();
-//
-//         if node.kind() == "class_declaration" {
-//             traverse_class(cursor, source, depth, state)?;
-//             println!("Found class declaration");
-//         } else {
-//             // If this node has children, traverse them
-//             if cursor.goto_first_child() {
-//                 traverse_tree(cursor, source, depth + 1, state);
-//                 cursor.goto_parent();
-//             }
-//         }
-//
-//         // Move to the next sibling
-//         if !cursor.goto_next_sibling() {
-//             break;
-//         }
-//
-//     }
-//     Ok(())
-// }
-//
-// fn traverse_class(cursor: &mut TreeCursor, source: &str, depth: usize, state: &mut CursorState) -> Result<()> {
-//     let mut builder = ClassDeclarationStateBuilder::default();
-//     builder.autovalue_class(true);
-//     builder.name("boop".to_string());
-//     state.classes.push(builder);
-//
-//     if cursor.goto_first_child() {
-//         let node = cursor.node();
-//         match node.kind() {
-//             "modifiers" => {}
-//             // declare all the top-level fields in class so we can hand off to specific traverse functions
-//             _ => {}
-//         }
-//         traverse_tree(cursor, source, depth + 1, state)?;
-//         cursor.goto_parent();
-//     } else {
-//         return Err(ParseError::FileProcessingError("Class declaration has no children".to_string()));
-//     }
-//
-//     state.final_classes.push(state.classes.pop().unwrap().build().unwrap());
-//     Ok(())
-// }
-//
-// fn print_node(cursor: &TreeCursor, source: &str, depth: usize) {
-//     let node = cursor.node();
-//     let indent = "  ".repeat(depth);
-//     let node_text = &source[node.start_byte()..node.end_byte()];
-//     let preview = node_text.lines().next().unwrap_or(node_text);
-//     println!("{}{}:{} - {}", indent, node.kind(), node.start_position().row + 1, preview);
-// }
-*/
 
 /// Runs a simple query on the tree to find the package declaration and return the
 /// package name. Returns an error if there are issues parsing, but this is not
@@ -153,21 +79,155 @@ fn collect_package(tree: &tree_sitter::Tree, source_code: &str) -> Result<String
     Err(ParseError::FileProcessingError("Could not find package declaration".to_string()))
 }
 
-
-struct MatchState {
-
+/// Runs a simple query to collect the full text of all the import statements in the
+/// Java file. Returns this an a vector of strings with each entry being a single import.
+fn collect_import_statements(tree: &tree_sitter::Tree, source_code: &str) -> Vec<String> {
+    let query = Query::new(&tree_sitter_java::language(), r#"
+      (import_declaration) @import
+    "#).unwrap();
+    let mut cursor = QueryCursor::new();
+    let matches = cursor.matches(&query, tree.root_node(), source_code.as_bytes());
+    let mut import_statements = Vec::new();
+    for m in matches {
+        for capture in m.captures {
+            let node = capture.node;
+            let import_text = &source_code[node.start_byte()..node.end_byte()];
+            import_statements.push(import_text.to_string());
+        }
+    }
+    import_statements
 }
 
-/*
- *  Idea:
- *    - I'm going to collect all the classes
- *    - For each class call another method to collect annotations
- *        - When calling the method pass in the node for the class so the query only searches
- *          the class scope
- *    - Filter these classes based on annotations
- *    - For the remainder, call another method to collect method declarations
- *    -
- */
+#[derive(Debug, Builder, Default)]
+struct ClassDeclarationState {
+    name: String,
+    methods: Vec<MethodDeclarationState>,
+}
+
+#[derive(Debug, Builder, Default, Clone)]
+struct MethodDeclarationState {
+    name: String,
+    return_type: String,
+}
+
+fn collect_classes(tree: &tree_sitter::Tree, source_code: &str) -> Result<Vec<ClassDeclarationState>> {
+    // Query to find classes
+    let query = Query::new(&tree_sitter_java::language(), r#"
+      (class_declaration
+        name: (identifier) @class-name
+        body: (class_body
+          (
+            (method_declaration
+              (modifiers "abstract")
+            ) @method-declaration
+          )+
+        )
+      )
+    "#).unwrap();
+    let mut cursor = QueryCursor::new();
+    let matches = cursor.matches(&query, tree.root_node(), source_code.as_bytes());
+
+    let mut class_states: Vec<ClassDeclarationState> = vec![];
+
+    'query_match:
+    for m in matches {
+        let mut state = ClassDeclarationStateBuilder::default();
+        let mut methods: Vec<MethodDeclarationState> = vec![];
+        for capture in m.captures {
+            match query.capture_names()[capture.index as usize] {
+                "method-declaration" => {
+                    let node = capture.node;
+                    let method_name = &source_code[node.start_byte()..node.end_byte()];
+                    debug!("Processing method-declaration '{}'", method_name);
+
+                    methods.push(collect_abstract_method(node, source_code)?);
+                }
+                "class-name" => {
+                    let node = capture.node;
+                    let class_name = &source_code[node.start_byte()..node.end_byte()];
+                    state.name(class_name.to_string());
+                    debug!("Processing class-name '{}'", class_name);
+
+                    // Grab the parent node (the class_declaration) and check if this is an
+                    // AutoValue (annotated) class. If it's not, then bail out of additional
+                    // processing.
+                    let parent_node = node.parent().unwrap();
+                    let av_class = has_autovalue_annotation(parent_node, source_code, class_name);
+                    if !av_class {
+                        // If this isn't an AutoValue class, no need to continue processing, move
+                        // on to the next match.
+                        continue 'query_match;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let state = state
+            .methods(methods)
+            .build()
+            .map_err(|e| ParseError::FileProcessingError(e.to_string()))?;
+        debug!("Collected class state: {:#?}", state);
+        class_states.push(state);
+    }
+
+    Ok(class_states)
+}
+
+/// Determines if a given class (specified by the node and class-name) is annotated with
+/// an '@AutoValue' annotation.
+fn has_autovalue_annotation(node: Node, source_code: &str, class_name: &str) -> bool {
+    // Construct a query, using predicates to select match the exact class and annotation name
+    let query = Query::new(&tree_sitter_java::language(), &format!(r#"
+      (class_declaration
+        (modifiers [
+            ((marker_annotation) @marker_annotation
+              (#eq? @marker_annotation "@AutoValue"))
+          ]+
+        )
+        name: ((identifier) @class-name (#eq? @class-name "{}"))
+      )
+    "#, class_name)).unwrap();
+    let mut cursor = QueryCursor::new();
+    let matches = cursor.matches(&query, node, source_code.as_bytes());
+
+    // If we have a match, then we found the AutoValue annotation on the desired class. No
+    // need to process the match results.
+    matches.count() > 0
+}
+
+fn collect_abstract_method(node: Node, source_code: &str) -> Result<MethodDeclarationState> {
+    let query = Query::new(&tree_sitter_java::language(), r#"
+      (method_declaration
+        type: _ @return-type
+        name: (identifier) @method-name
+        parameters: (formal_parameters)
+      )
+    "#).unwrap();
+    let mut cursor = QueryCursor::new();
+    let matches = cursor.matches(&query, node, source_code.as_bytes());
+
+    let mut state = MethodDeclarationStateBuilder::default();
+    for m in matches {
+        for capture in m.captures {
+            let node = capture.node;
+            let text = &source_code[node.start_byte()..node.end_byte()];
+            match query.capture_names()[capture.index as usize] {
+                "return-type" => {
+                    state.return_type(text.to_string());
+                }
+                "method-name" => {
+                    state.name(text.to_string());
+                }
+                _ => {}
+            }
+        }
+    }
+
+    state
+        .build()
+        .map_err(|e| ParseError::FileProcessingError(e.to_string()))
+}
 
 fn collect_annotations(tree: &tree_sitter::Tree, source_code: &str) {
     // Query to find annotations and their targets
