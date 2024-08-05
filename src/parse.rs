@@ -38,7 +38,6 @@ pub fn parse_file(file_path: &str) -> Result<ParseState> {
     let package_name = collect_package(&tree, &source_code)?;
     println!("Package name: {}", package_name);
     let import_statements = collect_import_statements(&tree, &source_code);
-    // collect_annotations(&tree, &source_code);
     println!("---------");
     let class_declarations = collect_classes(&tree, &source_code)?;
     println!("---------");
@@ -102,6 +101,7 @@ fn collect_import_statements(tree: &tree_sitter::Tree, source_code: &str) -> Vec
 struct ClassDeclarationState {
     name: String,
     methods: Vec<MethodDeclarationState>,
+    parent_chain: Vec<String>,
 }
 
 #[derive(Debug, Builder, Default, Clone)]
@@ -158,6 +158,9 @@ fn collect_classes(tree: &tree_sitter::Tree, source_code: &str) -> Result<Vec<Cl
                         // on to the next match.
                         continue 'query_match;
                     }
+
+                    // Find the class's parent class(es) (if any)
+                    state.parent_chain(collect_parent_chain(parent_node, source_code));
                 }
                 _ => {}
             }
@@ -196,6 +199,7 @@ fn has_autovalue_annotation(node: Node, source_code: &str, class_name: &str) -> 
     matches.count() > 0
 }
 
+/// Builds up a MethodDeclarationState from the given (method_declaration) node.
 fn collect_abstract_method(node: Node, source_code: &str) -> Result<MethodDeclarationState> {
     let query = Query::new(&tree_sitter_java::language(), r#"
       (method_declaration
@@ -229,97 +233,30 @@ fn collect_abstract_method(node: Node, source_code: &str) -> Result<MethodDeclar
         .map_err(|e| ParseError::FileProcessingError(e.to_string()))
 }
 
-fn collect_annotations(tree: &tree_sitter::Tree, source_code: &str) {
-    // Query to find annotations and their targets
-    let query = Query::new(&tree_sitter_java::language(), r#"
-      (class_declaration
-        (modifiers [
-            (annotation) @annotation
-            (marker_annotation) @marker_annotation
-          ]+
-        )
-        name: (identifier) @class_name
-        body: (class_body
-          (method_declaration
-            (modifiers [
-                ["abstract" "public" "private" "protected"] @method_visibility
-                (marker_annotation
-                    name: (identifier) @method_marker_annotation)
-                (annotation
-                    name: (identifier) @method_annotation)]* )?
-            type: [
-                (type_identifier) @method_return_type
-                (generic_type) @method_generic_return_type
-            ]
-            name: (identifier) @method_name
-          )*
-        )
-      )
-    "#).unwrap();
+/// Given a node to a class, return the chain of parent classes
+fn collect_parent_chain(node: Node, source_code: &str) -> Vec<String> {
+    let mut chain: Vec<String> = vec![];
+    if node.parent().is_none() {
+        return chain;
+    }
 
-    /*
-            parameters: (formal_parameters) @method_parameters
-     */
-
-    let mut query_cursor = QueryCursor::new();
-    let matches = query_cursor.matches(&query, tree.root_node(), source_code.as_bytes());
-
-    for match_ in matches {
-        println!("Match {:#?}", match_);
-        for capture in match_.captures {
-            println!("  Capture ({}) {:#?}",
-                     query.capture_names()[capture.index as usize],
-                     &source_code[capture.node.start_byte()..capture.node.end_byte()]);
+    let mut current_node = node;
+    while current_node.parent().is_some() {
+        current_node = current_node.parent().unwrap();
+        if current_node.kind() != "class_declaration" {
+            continue;
         }
-        // let mut annotation = None;
-        // let mut annotated_element = None;
 
-        // for capture in match_.captures {
-        //     match capture.index {
-        //         0 => annotation = Some(capture.node),
-        //         1 | 2 | 3 => annotated_element = Some(capture.node),
-        //         _ => {}
-        //     }
-        // }
-
-        // if let (Some(ann), Some(elem)) = (annotation, annotated_element) {
-        //     print_annotation_and_signature(&source_code, ann, elem);
-        // }
-        // else if let Some(ann) = annotation {
-        //     println!("Annotation: {}", &source_code[ann.range().start_byte..ann.range().end_byte]);
-        // }
+        // current node is a class_declaration, get the class-name
+        let name = current_node
+            .child_by_field_name("name")
+            .map(|n| source_code[n.start_byte()..n.end_byte()].to_string());
+        if name.is_some() {
+            chain.push(name.unwrap());
+        }
     }
-}
 
-fn print_annotation_and_signature(source: &str, annotation: Node, element: Node) {
-    let annotation_text = &source[annotation.range().start_byte..annotation.range().end_byte];
-    let element_type = element.kind();
-    let signature = get_element_signature(source, element);
-
-    println!("Annotation: {}", annotation_text);
-    println!("Annotated element type: {}", element_type);
-    println!("Signature: {}", signature);
-    println!("----");
-}
-
-fn get_element_signature(source: &str, node: Node) -> String {
-    match node.kind() {
-        "class_declaration" => {
-            let end = node.child_by_field_name("body")
-                .map_or(node.end_byte(), |body| body.start_byte());
-            source[node.start_byte()..end].trim().to_string()
-        },
-        "method_declaration" => {
-            let end = node.child_by_field_name("body")
-                .map_or(node.end_byte(), |body| body.start_byte());
-            source[node.start_byte()..end].trim().to_string()
-        },
-        "field_declaration" => {
-            let end = node.child_by_field_name("declarator")
-                .and_then(|d| d.child_by_field_name("value"))
-                .map_or(node.end_byte(), |v| v.start_byte());
-            source[node.start_byte()..end].trim().to_string()
-        },
-        _ => "Unknown element type".to_string(),
-    }
+    // Reverse the chain so that the first element is the root class
+    chain.reverse();
+    chain
 }
