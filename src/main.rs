@@ -2,6 +2,7 @@
 extern crate derive_builder;
 
 mod parse;
+mod generate;
 
 use clap::Parser;
 use env_logger;
