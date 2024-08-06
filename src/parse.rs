@@ -4,12 +4,14 @@ use tree_sitter::{Node, Parser, Query, QueryCursor, TreeCursor};
 use std::fs;
 use log::debug;
 
-pub struct ParseState {
+#[derive(Debug)]
+pub struct ParseResult {
     package_name: String,
     import_statements: Vec<String>,
     class_declarations: Vec<ClassDeclarationState>,
 }
 
+#[derive(Debug)]
 pub enum ParseError {
     ParserInitializationError,
     CannotReadFile(String),
@@ -19,7 +21,7 @@ pub enum ParseError {
 
 pub type Result<T> = std::result::Result<T, ParseError>;
 
-pub fn parse_file(file_path: &str) -> Result<ParseState> {
+pub fn parse_file(file_path: &str) -> Result<ParseResult> {
     let mut parser = Parser::new();
     parser.set_language(&tree_sitter_java::language())
         .map_err(|_| ParseError::ParserInitializationError)?;
@@ -42,7 +44,7 @@ pub fn parse_file(file_path: &str) -> Result<ParseState> {
     let class_declarations = collect_classes(&tree, &source_code)?;
     println!("---------");
 
-    Ok(ParseState {
+    Ok(ParseResult {
         package_name,
         import_statements,
         class_declarations,
