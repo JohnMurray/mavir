@@ -38,5 +38,6 @@ fn main() {
     }
     builder.init();
 
-    parse::parse_file(args.file_paths[0].as_str());
+    let parse_result = parse::parse_file(args.file_paths[0].as_str()).unwrap();
+    generate::generate_code(parse_result, args.output_path.as_str()).unwrap();
 }
