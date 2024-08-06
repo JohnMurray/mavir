@@ -11,5 +11,7 @@ clap = { version = "4.5.13", features = ["derive"] }
 derive_builder = "0.20.0"
 env_logger = "0.11.5"
 log = "0.4.22"
+tempdir = "0.3.7"
 tree-sitter = "0.22.6"
 tree-sitter-java = "0.21.0"
+zip = "2.1.6"
