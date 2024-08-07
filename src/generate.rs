@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::BufWriter;
 use crate::parse::{ClassDeclarationState, MethodDeclarationState, ParseResult};
 use crate::util;
+use crate::util::StripMargin;
 
 use log::{debug, warn};
 use tempdir::TempDir;
@@ -205,33 +206,32 @@ fn template_file_contents(
         .iter()
         .map(template_instance_var_decls)
         .collect::<Vec<String>>()
-        .join("\n");
+        .join("\n    ");
     let getters = class.methods
         .iter()
         .map(template_getter)
         .collect::<Vec<String>>()
-        .join("\n\n");
+        .join("\n");
     let constructor = template_constructor(class_name, class);
     let to_string = template_to_string(class_name, class);
     let equals = template_equals(parent_class_name, class);
     let hashcode = template_hashcode(class);
 
     format!(r#"package {package_name};
-
-    {imports}
-    import javax.annotation.Generated;
-
-    @Generated("mavir")
-    class {class_name} extends {parent_class_name} {{
-        {instance_vars}
-        {constructor}
-        {getters}
-        {to_string}
-        {equals}
-        {hashcode}
-    }}
-
-    "#).to_string()
+    |
+    |{imports}
+    |import javax.annotation.Generated;
+    |
+    |@Generated("mavir")
+    |class {class_name} extends {parent_class_name} {{
+    |    {instance_vars}
+    |    {constructor}
+    |    {getters}
+    |    {to_string}
+    |    {equals}
+    |    {hashcode}
+    |}}
+    |"#).strip_margin()
 }
 
 fn template_to_string(class_name: &str, class: &ClassDeclarationState) -> String {
@@ -240,16 +240,16 @@ fn template_to_string(class_name: &str, class: &ClassDeclarationState) -> String
         .iter()
         .map(|m| format!(r#""{}=" + this.{}"#, m.name, m.name))
         .collect::<Vec<String>>()
-        .join(" + \", \"\n+ ");
+        .join(" + \", \"\n            + ");
 
     format!(r#"
-    @Override
-    public String toString() {{
-        return "{class_name}{{"
-          + {instance_vars}
-          + "}}";
-    }}
-    "#)
+    |    @Override
+    |    public String toString() {{
+    |        return "{class_name}{{"
+    |            + {instance_vars}
+    |            + "}}";
+    |    }}
+    |"#).strip_margin()
 }
 
 fn template_equals(parent_class_name: &str, class: &ClassDeclarationState) -> String {
@@ -265,21 +265,21 @@ fn template_equals(parent_class_name: &str, class: &ClassDeclarationState) -> St
             }
         })
         .collect::<Vec<String>>()
-        .join(" && ");
+        .join("\n                && ");
 
     format!(r#"
-    @Override
-    public boolean equals(Object o) {{
-        if (o == this) {{
-            return true;
-        }}
-        if (o instanceof {parent_class_name}) {{
-            {parent_class_name} that = ({parent_class_name}) o;
-            return {equals_checks};
-        }}
-        return false;
-    }}
-    "#)
+    |    @Override
+    |    public boolean equals(Object o) {{
+    |        if (o == this) {{
+    |            return true;
+    |        }}
+    |        if (o instanceof {parent_class_name}) {{
+    |            {parent_class_name} that = ({parent_class_name}) o;
+    |            return {equals_checks};
+    |        }}
+    |        return false;
+    |    }}
+    |"#).strip_margin()
 }
 
 fn template_hashcode(class: &ClassDeclarationState) -> String {
@@ -287,7 +287,7 @@ fn template_hashcode(class: &ClassDeclarationState) -> String {
         .iter()
         .map(|m| {
             let name = &m.name;
-            let mult = "h$ *= 1000003;";
+            let mult = "h$ *= 1000003;\n       ";
             if &m.return_type == "long" {
                 format!("{mult} h$ ^= (int) (({name} >>> 32) ^ {name});")
             } else if &m.return_type == "boolean" {
@@ -303,17 +303,17 @@ fn template_hashcode(class: &ClassDeclarationState) -> String {
             }
         })
         .collect::<Vec<String>>()
-        .join("\n");
+        .join("\n        ");
 
 
     format!(r#"
-    @Override
-    public int hashCode() {{
-        int h$ = 1;
-        {field_hashes}
-        return h$;
-    }}
-    "#)
+    |    @Override
+    |    public int hashCode() {{
+    |        int h$ = 1;
+    |        {field_hashes}
+    |        return h$;
+    |    }}
+    |"#).strip_margin()
 }
 
 fn template_constructor(class_name: &str, class: &ClassDeclarationState) -> String {
@@ -321,7 +321,7 @@ fn template_constructor(class_name: &str, class: &ClassDeclarationState) -> Stri
         .iter()
         .map(|method| format!("{} {}", method.return_type, method.name))
         .collect::<Vec<String>>()
-        .join(", ");
+        .join(",\n            ");
 
     // TODO: We should skip the null-check if the type is nullable
     let assignments = class.methods
@@ -329,24 +329,25 @@ fn template_constructor(class_name: &str, class: &ClassDeclarationState) -> Stri
         .map(|method| {
             let name = &method.name;
             if util::is_primitive_type(&method.return_type) {
-                format!(r#"this.{name} = {name};"#)
+                format!(r#"        this.{name} = {name};"#)
             } else {
                 format!(r#"
-                if ({name} == null) {{
-                    throw new NullPointerException("Null {name}");
-                }}
-                this.{name} = {name};
-                "#)
+                |        if ({name} == null) {{
+                |            throw new NullPointerException("Null {name}");
+                |        }}
+                |        this.{name} = {name};
+                |"#).strip_margin()
             }
         })
         .collect::<Vec<String>>()
         .join("\n");
 
     format!(r#"
-    public {class_name}({constructor_params}) {{
-        {assignments}
-    }}
-    "#).to_string()
+    |    public {class_name}(
+    |            {constructor_params}) {{
+    |{assignments}
+    |    }}
+    |"#).strip_margin()
 }
 
 fn template_instance_var_decls(method: &MethodDeclarationState) -> String {
@@ -363,11 +364,11 @@ fn template_getter(method: &MethodDeclarationState) -> String {
     // let function_name = format!("get{}", upper_case_first_letter(name));
 
     format!(r#"
-        @Override
-        public {return_type} {name}() {{
-            return this.{name};
-        }}
-    "#)
+    |    @Override
+    |    public {return_type} {name}() {{
+    |        return this.{name};
+    |    }}
+    |"#).strip_margin()
 }
 
 // fn upper_case_first_letter(symbol: &str) -> String {
