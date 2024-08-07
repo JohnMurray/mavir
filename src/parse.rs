@@ -6,9 +6,9 @@ use log::debug;
 
 #[derive(Debug)]
 pub struct ParseResult {
-    package_name: String,
-    import_statements: Vec<String>,
-    class_declarations: Vec<ClassDeclarationState>,
+    pub package_name: String,
+    pub import_statements: Vec<String>,
+    pub class_declarations: Vec<ClassDeclarationState>,
 }
 
 #[derive(Debug)]
@@ -100,16 +100,16 @@ fn collect_import_statements(tree: &tree_sitter::Tree, source_code: &str) -> Vec
 }
 
 #[derive(Debug, Builder, Default)]
-struct ClassDeclarationState {
-    name: String,
-    methods: Vec<MethodDeclarationState>,
-    parent_chain: Vec<String>,
+pub struct ClassDeclarationState {
+    pub name: String,
+    pub methods: Vec<MethodDeclarationState>,
+    pub parent_chain: Vec<String>,
 }
 
 #[derive(Debug, Builder, Default, Clone)]
-struct MethodDeclarationState {
-    name: String,
-    return_type: String,
+pub struct MethodDeclarationState {
+    pub name: String,
+    pub return_type: String,
 }
 
 fn collect_classes(tree: &tree_sitter::Tree, source_code: &str) -> Result<Vec<ClassDeclarationState>> {
@@ -257,8 +257,5 @@ fn collect_parent_chain(node: Node, source_code: &str) -> Vec<String> {
             chain.push(name.unwrap());
         }
     }
-
-    // Reverse the chain so that the first element is the root class
-    chain.reverse();
     chain
 }
