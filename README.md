@@ -1,3 +1,17 @@
 # MAViR
 
 A minimal AutoValue implimentation in Rust.
+
+### Debugging
+
+You can do some basic spot-checking or debugging by running the tool and inspecting
+the output in the generated JAR like follows:
+```shell
+cargo run -- \
+  --file-paths /path/to/file/with/AutoValueModels.java \
+  --output-path boop.jar \
+  --verbose\
+  \
+  && unzip -p boop.jar \
+    path/to/file/with/AutoValue_AutoValueModels.java
+```
