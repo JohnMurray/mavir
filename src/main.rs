@@ -41,8 +41,10 @@ fn main() -> Result<()> {
         return Err(anyhow!("Must specify at least one --file-path option"));
     }
 
-    let parse_result = parse::parse_file(args.file_path[0].as_str())?;
-    generate::generate_code(parse_result, args.output_path.as_str())?;
+    for file_path in args.file_path.iter() {
+        let parse_result = parse::parse_file(file_path)?;
+        generate::generate_code(parse_result, &args.output_path)?;
+    }
 
     Ok(())
 }
