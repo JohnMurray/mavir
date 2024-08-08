@@ -1,5 +1,6 @@
 use derive_builder::Builder;
-use tree_sitter::{Node, Parser, Query, QueryCursor, TreeCursor};
+use tree_sitter::{Node, Parser, Query, QueryCursor};
+use thiserror::Error;
 
 use std::fs;
 use log::debug;
@@ -11,11 +12,15 @@ pub struct ParseResult {
     pub class_declarations: Vec<ClassDeclarationState>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ParseError {
+    #[error("Could not initialize parser for Java code (internal tool error)")]
     ParserInitializationError,
+    #[error("Could not read file: {0}")]
     CannotReadFile(String),
+    #[error("File is not parsable as Java code")]
     FileNotParsableAsJava,
+    #[error("File processing error: {0}")]
     FileProcessingError(String)
 }
 
@@ -30,7 +35,7 @@ pub fn parse_file(file_path: &str) -> Result<ParseResult> {
 
     let source_code = fs::read_to_string(file_path)
         .map_err(|_| ParseError::CannotReadFile(file_path.to_string()))?;
-    let mut tree = parser.parse(&source_code, None).ok_or(ParseError::FileNotParsableAsJava)?;
+    let tree = parser.parse(&source_code, None).ok_or(ParseError::FileNotParsableAsJava)?;
 
     println!("File parsed successfully");
     let root_node = tree.root_node();

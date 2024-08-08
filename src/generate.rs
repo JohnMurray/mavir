@@ -7,16 +7,20 @@ use crate::parse::{ClassDeclarationState, MethodDeclarationState, ParseResult};
 use crate::util;
 use crate::util::StripMargin;
 
-use log::{debug, warn};
+use log::debug;
 use tempdir::TempDir;
+use thiserror::Error;
 use walkdir::{DirEntry, WalkDir};
 use zip::DateTime;
 use zip::write::SimpleFileOptions;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum GenerateError {
+    #[error("Invalid output path: {0}")]
     InvalidOutputPath(String),
-    IoError(std::io::Error),
+    #[error("IO Error: {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("Zip Error: {0}")]
     ZipError(String),
 }
 

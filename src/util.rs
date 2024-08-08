@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::sync::OnceLock;
-use std::thread::JoinHandle;
 
 fn java_primitive_types() -> &'static HashSet<&'static str> {
     static HASHSET: OnceLock<HashSet<&str>> = OnceLock::new();

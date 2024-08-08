@@ -1,10 +1,8 @@
-#[macro_use]
-extern crate derive_builder;
-
 mod parse;
 mod generate;
 mod util;
 
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use env_logger;
 use log::LevelFilter;
@@ -15,7 +13,7 @@ use log::LevelFilter;
 struct Args {
     /// Path to a Java source file.
     #[arg(short, long)]
-    file_paths: Vec<String>,
+    file_path: Vec<String>,
 
     /// Path to the output file that will contain the generated code. This should be
     /// a path to a source JAR. The path MUST not exist, but the parent directory is
@@ -29,7 +27,7 @@ struct Args {
 }
 
 
-fn main() {
+fn main() -> Result<()> {
     // Parse the CLI arguments and configure the log-level
     let args = Args::parse();
     let mut builder = env_logger::builder();
@@ -39,6 +37,12 @@ fn main() {
     }
     builder.init();
 
-    let parse_result = parse::parse_file(args.file_paths[0].as_str()).unwrap();
-    generate::generate_code(parse_result, args.output_path.as_str()).unwrap();
+    if args.file_path.is_empty() {
+        return Err(anyhow!("Must specify at least one --file-path option"));
+    }
+
+    let parse_result = parse::parse_file(args.file_path[0].as_str())?;
+    generate::generate_code(parse_result, args.output_path.as_str())?;
+
+    Ok(())
 }

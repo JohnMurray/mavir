@@ -7,11 +7,13 @@ edition = "2021"
 cc="*"
 
 [dependencies]
+anyhow = "1.0.86"
 clap = { version = "4.5.13", features = ["derive"] }
 derive_builder = "0.20.0"
 env_logger = "0.11.5"
 log = "0.4.22"
 tempdir = "0.3.7"
+thiserror = "1.0.63"
 tree-sitter = "0.22.6"
 tree-sitter-java = "0.21.0"
 walkdir = "2.5.0"
