@@ -4,11 +4,11 @@ import com.google.auto.value.AutoValue;
 
 @AutoValue
 public abstract class TestClass {
-    public abstract String name();
+    abstract String name();
 
     public abstract long longValue();
 
-    public abstract int intValue();
+    protected abstract int intValue();
 
     public abstract float floatValue();
 
