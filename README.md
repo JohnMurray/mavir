@@ -32,7 +32,7 @@ cargo run -- \
 ### TODO's
 
 - [x] Modifiers on accessors should match abstract methods (currently just defaults to public)
-- [ ] Modifiers on constructor shoud match something (class visibility)
+- [x] ~Modifiers on constructor shoud match something (class visibility)~
 - [x] Comments are not appropriately ignored when gathering methods.
       This may be an element ordering thing
 - [ ] Test nested class construction

@@ -4,6 +4,7 @@ use thiserror::Error;
 
 use std::fs;
 use log::debug;
+use crate::util;
 
 #[derive(Debug)]
 pub struct ParseResult {
@@ -109,6 +110,7 @@ pub struct ClassDeclarationState {
     pub name: String,
     pub methods: Vec<MethodDeclarationState>,
     pub parent_chain: Vec<String>,
+    pub modifiers: Vec<String>,
 }
 
 #[derive(Debug, Builder, Default, Clone)]
@@ -122,6 +124,7 @@ fn collect_classes(tree: &tree_sitter::Tree, source_code: &str) -> Result<Vec<Cl
     // Query to find classes
     let query = Query::new(&tree_sitter_java::language(), r#"
       (class_declaration
+        (modifiers) @modifiers
         name: (identifier) @class-name
       )
     "#).unwrap();
@@ -134,9 +137,9 @@ fn collect_classes(tree: &tree_sitter::Tree, source_code: &str) -> Result<Vec<Cl
     for m in matches {
         let mut state = ClassDeclarationStateBuilder::default();
         for capture in m.captures {
+            let node = capture.node;
             match query.capture_names()[capture.index as usize] {
                 "class-name" => {
-                    let node = capture.node;
                     let class_name = &source_code[node.start_byte()..node.end_byte()];
                     state.name(class_name.to_string());
                     debug!("Processing class-name '{}'", class_name);
@@ -157,6 +160,17 @@ fn collect_classes(tree: &tree_sitter::Tree, source_code: &str) -> Result<Vec<Cl
 
                     // Find the class's parent class(es) (if any)
                     state.parent_chain(collect_parent_chain(parent_node, source_code));
+                }
+                "modifiers" => {
+                    // Collect the modifiers on the class, restrict this to _just_ access
+                    // modifiers. Note that modifiers here includes things like "static"
+                    // and annotations as well.
+                    let text = &source_code[node.start_byte()..node.end_byte()];
+                    let modifiers = text.split(" ")
+                        .filter(|m| util::is_access_modifier(*m))
+                        .map(str::to_string)
+                        .collect::<Vec<String>>();
+                    state.modifiers(modifiers);
                 }
                 _ => {}
             }
@@ -228,7 +242,7 @@ fn collect_abstract_method(node: Node, source_code: &str, class_name: &str) -> R
                     state.name(text.to_string());
                 }
                 "modifiers" => {
-                    let modifiers: Vec<String> = text.split(" ").map(|s| s.to_string()).collect();
+                    let modifiers: Vec<String> = text.split(" ").map(str::to_string).collect();
                     if modifiers.iter().find(|m| *m == "abstract").is_none() {
                         continue 'query_match;
                     }
@@ -237,7 +251,6 @@ fn collect_abstract_method(node: Node, source_code: &str, class_name: &str) -> R
                 _ => {}
             }
         }
-        println!("method state: {:#?}", state.build());
         methods.push(state
             .build()
             .map_err(|e| ParseError::FileProcessingError(e.to_string()))?);

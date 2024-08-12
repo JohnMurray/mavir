@@ -206,6 +206,7 @@ fn template_file_contents(
 ) -> String {
     let imports = import_statements.join("\n");
 
+    let modifiers = &class.modifiers.join(" ");
     let instance_vars = class.methods
         .iter()
         .map(template_instance_var_decls)
@@ -225,7 +226,7 @@ fn template_file_contents(
     |
     |{imports}
     |
-    |final class {class_name} extends {parent_class_name} {{
+    |final {modifiers} class {class_name} extends {parent_class_name} {{
     |    {instance_vars}
     |    {constructor}
     |    {getters}
