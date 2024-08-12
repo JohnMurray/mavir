@@ -17,6 +17,7 @@ function error() { local msg=$1;
 # Build AutoValue jar using gradle (our reference implementation)
 info "Build the reference classes using AutoValue annotation processor..."
 pushd "${DIR}/java_autovalue"
+rm -rf ./build/
 ./gradlew clean build >/dev/null 2>&1 \
     || error "Failed to build AutoValue jar (gradle)"
 popd
