@@ -15,3 +15,8 @@ cargo run -- \
   && unzip -p boop.jar \
     path/to/file/with/AutoValue_AutoValueModels.java
 ```
+
+### TODO's
+
+- [ ] Modifiers on accessors should match abstract methods (currently just defaults to public)
+- [ ] Modifiers on constructor shoud match something (class visibility)
