@@ -1,0 +1,32 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly 'com.google.auto.value:auto-value-annotations:1.11.0'
+    annotationProcessor 'com.google.auto.value:auto-value:1.11.0'
+}
+
+sourceCompatibility = '17'
+targetCompatibility = '17'
+
+
+tasks.withType(JavaCompile) {
+    doFirst {
+        println "Args for for $name are $options.allCompilerArgs"
+    }
+}
+
+// Task to print the classpath so that we can pass this to the javac
+// command that we build the mavir-generated classes with.
+task printClasspath {
+    doLast {
+        def classpath = project.configurations.compileClasspath.resolve()
+        def classpathString = classpath.join(":")
+        println ".:${classpathString}"
+    }
+}
