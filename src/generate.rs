@@ -368,12 +368,19 @@ fn template_getter(method: &MethodDeclarationState) -> String {
     let name = &method.name;
     let return_type = &method.return_type;
 
+    // Join all the modifiers except "abstract"
+    let modifiers = method.modifiers.iter()
+        .filter(|m| *m != "abstract")
+        .cloned()
+        .collect::<Vec<String>>()
+        .join(" ");
+
     // TODO: Do we need to make the name different from the accessor when using getters?
     // let function_name = format!("get{}", upper_case_first_letter(name));
 
     format!(r#"
     |    @Override
-    |    public {return_type} {name}() {{
+    |    {modifiers} {return_type} {name}() {{
     |        return this.{name};
     |    }}
     |"#).strip_margin()

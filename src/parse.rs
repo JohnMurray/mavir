@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use derive_builder::Builder;
 use tree_sitter::{Node, Parser, Query, QueryCursor};
 use thiserror::Error;
