@@ -27,6 +27,7 @@ task generateSourceJar(type: Exec) {
 
     commandLine mavirCommand,
             "--file-path", "src/main/java/com/github/johnmurray/mavir/TestClass.java",
+            "--file-path", "src/main/java/com/github/johnmurray/mavir/OuterClassWithNestedAutoValue.java",
             "-o", "${outputDir}/mavir.src.jar"
 
     ext.outputJar = "${outputDir}/mavir.src.jar"

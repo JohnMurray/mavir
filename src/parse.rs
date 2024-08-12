@@ -4,7 +4,6 @@ use thiserror::Error;
 
 use std::fs;
 use log::debug;
-use crate::util;
 
 #[derive(Debug)]
 pub struct ParseResult {
@@ -162,12 +161,13 @@ fn collect_classes(tree: &tree_sitter::Tree, source_code: &str) -> Result<Vec<Cl
                     state.parent_chain(collect_parent_chain(parent_node, source_code));
                 }
                 "modifiers" => {
-                    // Collect the modifiers on the class, restrict this to _just_ access
-                    // modifiers. Note that modifiers here includes things like "static"
-                    // and annotations as well.
+                    // Collect the modifiers for the class that we need to proxy to the generated
+                    // class. Right now the only modifier we proxy (that makes sense) is the
+                    // "public" access modifier.
+                    // Modifiers also include items like "static" or annotations
                     let text = &source_code[node.start_byte()..node.end_byte()];
                     let modifiers = text.split(" ")
-                        .filter(|m| util::is_access_modifier(*m))
+                        .filter(|m| *m == "public")
                         .map(str::to_string)
                         .collect::<Vec<String>>();
                     state.modifiers(modifiers);

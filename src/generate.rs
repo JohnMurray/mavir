@@ -26,19 +26,21 @@ pub enum GenerateError {
 
 type Result<T> = std::result::Result<T, GenerateError>;
 
-pub fn generate_code(parse_result: ParseResult, output_path: &str) -> Result<()> {
+pub fn generate_code(parse_results: Vec<ParseResult>, output_path: &str) -> Result<()> {
     let output_path = validate_output_path(output_path)?;
     let working_dir = init_working_directory()?;
     debug!("Writing to output path: {}", output_path);
 
     // Generate code
-    for class_decl in &parse_result.class_declarations {
-        generate_java_file(
-            working_dir.path(),
-            class_decl,
-            &parse_result.package_name,
-            &parse_result.import_statements,
-        )?;
+    for parse_result in &parse_results {
+        for class_decl in &parse_result.class_declarations {
+            generate_java_file(
+                working_dir.path(),
+                class_decl,
+                &parse_result.package_name,
+                &parse_result.import_statements,
+            )?;
+        }
     }
 
     // Package the generated code into a source JAR
@@ -238,6 +240,10 @@ fn template_file_contents(
 }
 
 fn template_to_string(class_name: &str, class: &ClassDeclarationState) -> String {
+
+    // The parent class-name is qualified for nested classes, such a 'OuterClass.InnerAutoValueClass'
+    // But, for our toString method, we want just 'InnerAutoValueClass'
+    let class_name = class_name.split(".").last().unwrap();
 
     let instance_vars = class.methods
         .iter()

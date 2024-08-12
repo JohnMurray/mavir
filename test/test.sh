@@ -37,9 +37,13 @@ popd
 info "Diffing the compiled classes..."
 class_name_list=(
   "AutoValue_TestClass"
+  "AutoValue_OuterClassWithNestedAutoValue_NestedTestClass"
 )
 
+unset JAVA_TOOL_OPTIONS
+
 for class_name in "${class_name_list[@]}"; do
+  info "    - diffing ${class_name} ..."
   mavir_class="${DIR}/mavir_autovalue/build/classes/java/main/com/github/johnmurray/mavir/${class_name}.class"
   refav_class="${DIR}/java_autovalue/build/classes/java/main/com/github/johnmurray/mavir/${class_name}.class"
   diff \

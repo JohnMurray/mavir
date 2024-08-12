@@ -5,7 +5,8 @@ mod util;
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use env_logger;
-use log::LevelFilter;
+use log::{info, LevelFilter};
+use crate::parse::ParseResult;
 
 /// Generates AutoValue classes for given Java files. Outputs generated code as a source JAR.
 #[derive(clap::Parser, Debug)]
@@ -41,10 +42,14 @@ fn main() -> Result<()> {
         return Err(anyhow!("Must specify at least one --file-path option"));
     }
 
-    for file_path in args.file_path.iter() {
-        let parse_result = parse::parse_file(file_path)?;
-        generate::generate_code(parse_result, &args.output_path)?;
-    }
+    let parse_results = args.file_path
+        .iter()
+        .map(|file_path| {
+            info!("Generating code for: {}", file_path);
+            parse::parse_file(file_path)
+        })
+        .collect::<parse::Result<Vec<ParseResult>>>()?;
+    generate::generate_code(parse_results, &args.output_path)?;
 
     Ok(())
 }

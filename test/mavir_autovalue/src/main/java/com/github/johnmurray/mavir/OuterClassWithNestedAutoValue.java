@@ -1,0 +1,1 @@
+../../../../../../../../java_autovalue/src/main/java/com/github/johnmurray/mavir/OuterClassWithNestedAutoValue.java

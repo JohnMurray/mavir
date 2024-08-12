@@ -17,5 +17,6 @@ Tests are run via the `test.sh` shell script (nothing fancy).
 ### Adding Test Cases
 
 0. Add new test classes in the `java_autovalue` project
+   (also update the `mavir` command in `build.gradle`)
 1. Ensure that an identically named symlink exists in the `mavir_autovalue` project
 2. Update `test.sh` to include the classname in the decompiled-diff check logic

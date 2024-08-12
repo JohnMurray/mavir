@@ -17,23 +17,8 @@ fn java_primitive_types() -> &'static HashSet<&'static str> {
     })
 }
 
-fn java_access_modifiers() -> &'static HashSet<&'static str> {
-    static HASHSET: OnceLock<HashSet<&str>> = OnceLock::new();
-    HASHSET.get_or_init(|| {
-        let mut set = HashSet::new();
-        set.insert("public");
-        set.insert("private");
-        set.insert("protected");
-        set
-    })
-}
-
 pub fn is_primitive_type(identifier: &str) -> bool {
     return java_primitive_types().contains(identifier);
-}
-
-pub fn is_access_modifier(identifier: &str) -> bool {
-    return java_access_modifiers().contains(identifier);
 }
 
 
