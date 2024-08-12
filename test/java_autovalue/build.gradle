@@ -14,13 +14,6 @@ dependencies {
 sourceCompatibility = '17'
 targetCompatibility = '17'
 
-
-tasks.withType(JavaCompile) {
-    doFirst {
-        println "Args for for $name are $options.allCompilerArgs"
-    }
-}
-
 // Task to print the classpath so that we can pass this to the javac
 // command that we build the mavir-generated classes with.
 task printClasspath {
