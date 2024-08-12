@@ -217,17 +217,15 @@ fn template_file_contents(
         .collect::<Vec<String>>()
         .join("\n");
     let constructor = template_constructor(class_name, class);
-    let to_string = template_to_string(class_name, class);
+    let to_string = template_to_string(parent_class_name, class);
     let equals = template_equals(parent_class_name, class);
     let hashcode = template_hashcode(class);
 
     format!(r#"package {package_name};
     |
     |{imports}
-    |import javax.annotation.Generated;
     |
-    |@Generated("mavir")
-    |class {class_name} extends {parent_class_name} {{
+    |final class {class_name} extends {parent_class_name} {{
     |    {instance_vars}
     |    {constructor}
     |    {getters}
@@ -347,7 +345,7 @@ fn template_constructor(class_name: &str, class: &ClassDeclarationState) -> Stri
         .join("\n");
 
     format!(r#"
-    |    public {class_name}(
+    |    {class_name}(
     |            {constructor_params}) {{
     |{assignments}
     |    }}
