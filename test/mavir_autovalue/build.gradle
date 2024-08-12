@@ -1,0 +1,72 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly 'com.google.auto.value:auto-value-annotations:1.11.0'
+}
+
+sourceCompatibility = '17'
+targetCompatibility = '17'
+
+// Task to generate the auto-value source JAR using mavir
+task generateSourceJar(type: Exec) {
+    dependsOn 'cargoBuild'
+
+    def outputDir = new File(project.buildDir, "generated-source-jars")
+    doFirst {
+        outputDir.mkdirs()
+    }
+
+    def mavirPath = project.projectDir.parentFile.parentFile.absolutePath
+    def mavirCommand = "${mavirPath}/target/release/mavir"
+
+    commandLine mavirCommand,
+            "--file-path", "src/main/java/com/github/johnmurray/mavir/TestClass.java",
+            "-o", "${outputDir}/mavir.src.jar"
+
+    ext.outputJar = "${outputDir}/mavir.src.jar"
+
+    inputs.files("src/main/java/com/github/johnmurray/mavir/TestClass.java")
+    outputs.dir(outputDir)
+}
+
+// Extracts the source jar into the build directory (so we can compile it alongside the project sources)
+task extractGeneratedSources(type: Copy) {
+    dependsOn generateSourceJar
+
+    def destinationDirectory = new File(project.buildDir, "extracted-generated-sources")
+
+    from project.zipTree(generateSourceJar.outputJar)
+    into destinationDirectory
+
+    doLast {
+        def extractedFile = fileTree(dir: destinationDirectory).files
+        println "Extracted files:"
+        extractedFile.each { println it }
+
+        if (extractedFile.empty) {
+            println "WARNING: No files were extracted from the source jar!"
+        }
+    }
+}
+
+task cargoBuild(type: Exec) {
+    workingDir project.projectDir.parentFile.parentFile
+    commandLine 'cargo', 'build', '--release'
+}
+
+compileJava {
+    dependsOn extractGeneratedSources
+    doFirst {
+        def extractedSourcesDir = new File(project.buildDir, "extracted-generated-sources")
+        def extractedSources = fileTree(dir: extractedSourcesDir, include: '**/*.java')
+
+        source += extractedSources
+    }
+}
+
