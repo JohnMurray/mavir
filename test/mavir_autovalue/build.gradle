@@ -33,6 +33,9 @@ task generateSourceJar(type: Exec) {
 
     inputs.files("src/main/java/com/github/johnmurray/mavir/TestClass.java")
     outputs.dir(outputDir)
+
+    // always run this task
+    outputs.upToDateWhen { false }
 }
 
 // Extracts the source jar into the build directory (so we can compile it alongside the project sources)

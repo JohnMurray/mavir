@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use derive_builder::Builder;
 use tree_sitter::{Node, Parser, Query, QueryCursor};
 use thiserror::Error;
@@ -115,6 +116,7 @@ pub struct ClassDeclarationState {
 pub struct MethodDeclarationState {
     pub name: String,
     pub return_type: String,
+    pub modifiers: Vec<String>,
 }
 
 fn collect_classes(tree: &tree_sitter::Tree, source_code: &str) -> Result<Vec<ClassDeclarationState>> {
@@ -122,13 +124,6 @@ fn collect_classes(tree: &tree_sitter::Tree, source_code: &str) -> Result<Vec<Cl
     let query = Query::new(&tree_sitter_java::language(), r#"
       (class_declaration
         name: (identifier) @class-name
-        body: (class_body
-          (
-            (method_declaration
-              (modifiers "abstract")
-            ) @method-declaration
-          )+
-        )
       )
     "#).unwrap();
     let mut cursor = QueryCursor::new();
@@ -139,16 +134,8 @@ fn collect_classes(tree: &tree_sitter::Tree, source_code: &str) -> Result<Vec<Cl
     'query_match:
     for m in matches {
         let mut state = ClassDeclarationStateBuilder::default();
-        let mut methods: Vec<MethodDeclarationState> = vec![];
         for capture in m.captures {
             match query.capture_names()[capture.index as usize] {
-                "method-declaration" => {
-                    let node = capture.node;
-                    let method_name = &source_code[node.start_byte()..node.end_byte()];
-                    debug!("Processing method-declaration '{}'", method_name);
-
-                    methods.push(collect_abstract_method(node, source_code)?);
-                }
                 "class-name" => {
                     let node = capture.node;
                     let class_name = &source_code[node.start_byte()..node.end_byte()];
@@ -166,6 +153,9 @@ fn collect_classes(tree: &tree_sitter::Tree, source_code: &str) -> Result<Vec<Cl
                         continue 'query_match;
                     }
 
+                    // Collect abstract methods
+                    state.methods(collect_abstract_method(parent_node, source_code, class_name)?);
+
                     // Find the class's parent class(es) (if any)
                     state.parent_chain(collect_parent_chain(parent_node, source_code));
                 }
@@ -174,7 +164,6 @@ fn collect_classes(tree: &tree_sitter::Tree, source_code: &str) -> Result<Vec<Cl
         }
 
         let state = state
-            .methods(methods)
             .build()
             .map_err(|e| ParseError::FileProcessingError(e.to_string()))?;
         debug!("Collected class state: {:#?}", state);
@@ -207,19 +196,28 @@ fn has_autovalue_annotation(node: Node, source_code: &str, class_name: &str) -> 
 }
 
 /// Builds up a MethodDeclarationState from the given (method_declaration) node.
-fn collect_abstract_method(node: Node, source_code: &str) -> Result<MethodDeclarationState> {
-    let query = Query::new(&tree_sitter_java::language(), r#"
-      (method_declaration
-        type: _ @return-type
-        name: (identifier) @method-name
-        parameters: (formal_parameters)
+fn collect_abstract_method(node: Node, source_code: &str, class_name: &str) -> Result<Vec<MethodDeclarationState>> {
+    let query = Query::new(&tree_sitter_java::language(), &format!(r#"
+      (class_declaration
+        name: (identifier) @class-name (#eq? @class-name "{}")
+        body: (class_body
+          (method_declaration
+            (modifiers) @modifiers
+            type: _ @return-type
+            name: (identifier) @method-name
+            parameters: (formal_parameters)
+          )
+        )
       )
-    "#).unwrap();
+    "#, class_name)).unwrap();
     let mut cursor = QueryCursor::new();
     let matches = cursor.matches(&query, node, source_code.as_bytes());
 
-    let mut state = MethodDeclarationStateBuilder::default();
+    let mut methods: Vec<MethodDeclarationState> = vec![];
+
+    'query_match:
     for m in matches {
+        let mut state = MethodDeclarationStateBuilder::default();
         for capture in m.captures {
             let node = capture.node;
             let text = &source_code[node.start_byte()..node.end_byte()];
@@ -230,14 +228,23 @@ fn collect_abstract_method(node: Node, source_code: &str) -> Result<MethodDeclar
                 "method-name" => {
                     state.name(text.to_string());
                 }
+                "modifiers" => {
+                    let modifiers: Vec<String> = text.split(" ").map(|s| s.to_string()).collect();
+                    if modifiers.iter().find(|m| *m == "abstract").is_none() {
+                        continue 'query_match;
+                    }
+                    state.modifiers(modifiers);
+                }
                 _ => {}
             }
         }
+        println!("method state: {:#?}", state.build());
+        methods.push(state
+            .build()
+            .map_err(|e| ParseError::FileProcessingError(e.to_string()))?);
     }
 
-    state
-        .build()
-        .map_err(|e| ParseError::FileProcessingError(e.to_string()))
+    Ok(methods)
 }
 
 /// Given a node to a class, return the chain of parent classes

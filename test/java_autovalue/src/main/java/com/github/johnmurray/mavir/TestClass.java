@@ -14,8 +14,10 @@ public abstract class TestClass {
 
     public abstract double doubleValue();
 
+    // Boolean method
     public abstract boolean booleanValue();
 
+    /** Char method */
     public abstract char charValue();
 
     public TestClass create(String name, long longValue, int intValue, float floatValue, double doubleValue, boolean booleanValue, char charValue) {
