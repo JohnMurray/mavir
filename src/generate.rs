@@ -260,7 +260,13 @@ fn template_equals(parent_class_name: &str, class: &ClassDeclarationState) -> St
         .iter()
         .map(|m| {
             let name = &m.name;
-            if util::is_primitive_type(&m.return_type) {
+            if &m.return_type == "double" {
+                format!("Double.doubleToLongBits(this.{name}) == Double.doubleToLongBits(that.{name}())")
+            }
+            else if &m.return_type == "float" {
+                format!("Float.floatToIntBits(this.{name}) == Float.floatToIntBits(that.{name}())")
+            }
+            else if util::is_primitive_type(&m.return_type) {
                 format!("this.{name} == that.{name}()")
             } else {
                 format!("this.{name}.equals(that.{name}())")
