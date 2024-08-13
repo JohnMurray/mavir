@@ -86,7 +86,7 @@ fn collect_package(tree: &tree_sitter::Tree, source_code: &str) -> Result<String
 }
 
 /// Runs a simple query to collect the full text of all the import statements in the
-/// Java file. Returns this an a vector of strings with each entry being a single import.
+/// Java file. Returns this a vector of strings with each entry being a single import.
 fn collect_import_statements(tree: &tree_sitter::Tree, source_code: &str) -> Vec<String> {
     let query = Query::new(&tree_sitter_java::language(), r#"
       (import_declaration) @import

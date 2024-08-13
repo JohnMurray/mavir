@@ -36,3 +36,11 @@ cargo run -- \
 - [x] Comments are not appropriately ignored when gathering methods.
       This may be an element ordering thing
 - [x] Test nested class construction
+- [ ] Support getters and setters
+      - [ ] Support `getField` for auto-value classes
+      - [ ] Support `setField` for builder classes
+- [ ] Support `@Nullable` values
+- [ ] Support `Optional` values
+      - Do we need to support Guava Optional as well?
+        https://github.com/google/auto/blob/main/value/userguide/builders-howto.md#optional
+- [ ]
