@@ -1,4 +1,4 @@
-# MAViR
+# mavir
 
 A minimal AutoValue implimentation in Rust.
 
