@@ -276,7 +276,10 @@ fn template_equals(parent_class_name: &str, class: &ClassDeclarationState) -> St
             else if util::is_primitive_type(&m.return_type) {
                 format!("this.{name} == that.{name}()")
             } else {
-                format!("this.{name}.equals(that.{name}())")
+                let if_null = if m.is_nullable {
+                    &format!("this.{name} == null? that.{name}() == null : ")
+                } else { "" };
+                format!("({if_null}this.{name}.equals(that.{name}()))")
             }
         })
         .collect::<Vec<String>>()
@@ -314,7 +317,10 @@ fn template_hashcode(class: &ClassDeclarationState) -> String {
             } else if util::is_primitive_type(&m.return_type) {
                 format!("{mult} h$ ^= this.{name};")
             } else {
-                format!("{mult} h$ ^= this.{name}.hashCode();")
+                let if_null =
+                    if m.is_nullable { &format!("this.{name} == null ? 0 : ") }
+                    else { "" };
+                format!("{mult} h$ ^= {if_null}this.{name}.hashCode();")
             }
         })
         .collect::<Vec<String>>()
@@ -334,7 +340,12 @@ fn template_hashcode(class: &ClassDeclarationState) -> String {
 fn template_constructor(class_name: &str, class: &ClassDeclarationState) -> String {
     let constructor_params = class.methods
         .iter()
-        .map(|method| format!("{} {}", method.return_type, method.name))
+        .map(|method| {
+            format!("{}{} {}",
+                    if method.is_nullable { "@Nullable " } else { "" },
+                    method.return_type,
+                    method.name)
+        })
         .collect::<Vec<String>>()
         .join(",\n            ");
 
@@ -343,7 +354,7 @@ fn template_constructor(class_name: &str, class: &ClassDeclarationState) -> Stri
         .iter()
         .map(|method| {
             let name = &method.name;
-            if util::is_primitive_type(&method.return_type) {
+            if util::is_primitive_type(&method.return_type) || method.is_nullable {
                 format!(r#"        this.{name} = {name};"#)
             } else {
                 format!(r#"
@@ -368,7 +379,8 @@ fn template_constructor(class_name: &str, class: &ClassDeclarationState) -> Stri
 fn template_instance_var_decls(method: &MethodDeclarationState) -> String {
     let name = &method.name;
     let return_type = &method.return_type;
-    format!("private final {} {};", return_type, name)
+    let nullable_annotation = if method.is_nullable { "@Nullable " } else { "" };
+    format!("{nullable_annotation}private final {return_type} {name};")
 }
 
 fn template_getter(method: &MethodDeclarationState) -> String {

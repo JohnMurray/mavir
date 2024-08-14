@@ -117,6 +117,8 @@ pub struct MethodDeclarationState {
     pub name: String,
     pub return_type: String,
     pub modifiers: Vec<String>,
+    #[builder(default)]
+    pub is_nullable: bool,
 }
 
 fn collect_classes(tree: &tree_sitter::Tree, source_code: &str) -> Result<Vec<ClassDeclarationState>> {
@@ -242,10 +244,14 @@ fn collect_abstract_method(node: Node, source_code: &str, class_name: &str) -> R
                     state.name(text.to_string());
                 }
                 "modifiers" => {
-                    let modifiers: Vec<String> = text.split(" ").map(str::to_string).collect();
+                    let modifiers: Vec<String> = text.split(" ")
+                        .map(|m| m.trim().to_string())
+                        .filter(|m| m != "")
+                        .collect();
                     if modifiers.iter().find(|m| *m == "abstract").is_none() {
                         continue 'query_match;
                     }
+                    state.is_nullable(modifiers.iter().find(|m| *m == "@Nullable").is_some());
                     state.modifiers(modifiers);
                 }
                 _ => {}
