@@ -1,6 +1,7 @@
 package com.github.johnmurray.mavir;
 
 import com.google.auto.value.AutoValue;
+import java.util.Optional;
 import javax.annotation.Nullable;
 
 @AutoValue
@@ -9,6 +10,8 @@ public abstract class TestClass {
     abstract String name();
 
     abstract String otherName();
+
+    abstract Optional<String> optionalName();
 
     public abstract long longValue();
 
@@ -24,7 +27,25 @@ public abstract class TestClass {
     /** Char method */
     public abstract char charValue();
 
-    public TestClass create(String name, String otherName, long longValue, int intValue, float floatValue, double doubleValue, boolean booleanValue, char charValue) {
-        return new AutoValue_TestClass(name, otherName, longValue, intValue, floatValue, doubleValue, booleanValue, charValue);
+    public TestClass create(
+            String name,
+            String otherName,
+            Optional<String> optionalName,
+            long longValue,
+            int intValue,
+            float floatValue,
+            double doubleValue,
+            boolean booleanValue,
+            char charValue) {
+        return new AutoValue_TestClass(
+                name,
+                otherName,
+                optionalName,
+                longValue,
+                intValue,
+                floatValue,
+                doubleValue,
+                booleanValue,
+                charValue);
     }
 }
