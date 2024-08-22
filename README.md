@@ -1,6 +1,49 @@
 # mavir
 
-A minimal AutoValue implimentation in Rust.
+Mavir is a minimal code-generation replacement for AutoValue that aims to generate byte-for-byte compatible
+classes, but without relying on the annotation processor for generating code.
+
+### Features
+
+The key to note here is "minimal". Mavir does not aim to provide full compatibility with AutoValue, but does
+aim to cover the most basic features. Currently supported features:
+
+- `@AutoValue` annotation in both top-level and nested contexts
+- Using bean-style getters for the abstract class.
+- `@Nullable` annotation (removes null checks from constructor)
+
+Features currently unavailable but currently under development:
+
+- Builder support (`@AutoValue.Builder`)
+- Optional support in builders (optionals currently work like any other type in base AutoValue class)
+
+Features that are unavailable and ulikely to be supported:
+
+- custom `equals`, `hashCode`, or `toString` implementation(s)
+- "Passing through" annotations to the generated impl.
+- Extensions
+- Pretty much everything else in the AutoValue docs...
+
+### Why?
+
+The Java annotation processor is perfectly suitable if you always want to compile your code when you perform
+code-generation. For building, packagaing, or testing an application; this is likely fine. This is because the
+annotation processor runs as a compiler plugina and requires the full context of a compilation, meaning that you
+don't just need to build the current package you want to run AutoValue code-generation on, but you need to build all
+the transitive dependencies to that package as well.
+
+There are instances where you want to generate the code without invoking the compiler (e.g. performing code-generation
+for an IDE). Generating code outside the annotation processor means skipping _any_ compilation of Java code.
+
+
+### How?
+
+Mavir works by parsing Java files and scanning the AST to extract information on AutoValue classes and then generating
+class files and packaging them into a jar.
+
+Mavir's generated artifacts are consistent between runs and suitable for use in a hermetic build system.
+
+### Help
 
 ```text
 Usage: mavir [OPTIONS] --output-path <OUTPUT_PATH>
@@ -37,10 +80,11 @@ cargo run -- \
       This may be an element ordering thing
 - [x] Test nested class construction
 - [ ] Support getters and setters
-      - [ ] Support `getField` for auto-value classes
+      - [x] Support `getField` for auto-value classes
       - [ ] Support `setField` for builder classes
-- [ ] Support `@Nullable` values
-- [ ] Support `Optional` values
+- [x] Support `@Nullable` values
+- [x] Support `Optional` values in AutoValue
+- [ ] Support `Optional` values in AutoValue.Builder
       - Do we need to support Guava Optional as well?
         https://github.com/google/auto/blob/main/value/userguide/builders-howto.md#optional
 - [ ]
