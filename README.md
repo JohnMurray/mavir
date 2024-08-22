@@ -80,11 +80,11 @@ cargo run -- \
       This may be an element ordering thing
 - [x] Test nested class construction
 - [ ] Support getters and setters
-      - [x] Support `getField` for auto-value classes
-      - [ ] Support `setField` for builder classes
+  - [x] Support `getField` for auto-value classes
+  - [ ] Support `setField` for builder classes
 - [x] Support `@Nullable` values
 - [x] Support `Optional` values in AutoValue
 - [ ] Support `Optional` values in AutoValue.Builder
-      - Do we need to support Guava Optional as well?
-        https://github.com/google/auto/blob/main/value/userguide/builders-howto.md#optional
+  - Do we need to support Guava Optional as well?
+    https://github.com/google/auto/blob/main/value/userguide/builders-howto.md#optional
 - [ ]
