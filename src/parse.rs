@@ -194,10 +194,9 @@ fn has_autovalue_annotation(node: Node, source_code: &str, class_name: &str) -> 
     // Construct a query, using predicates to select match the exact class and annotation name
     let query = Query::new(&tree_sitter_java::language(), &format!(r#"
       (class_declaration
-        (modifiers [
+        (modifiers
             ((marker_annotation) @marker_annotation
               (#eq? @marker_annotation "@AutoValue"))
-          ]+
         )
         name: ((identifier) @class-name (#eq? @class-name "{}"))
       )
@@ -288,4 +287,99 @@ fn collect_parent_chain(node: Node, source_code: &str) -> Vec<String> {
         }
     }
     chain
+}
+
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn find_annotation_when_only_one_present() {
+        let mut parser = super::Parser::new();
+        parser.set_language(&tree_sitter_java::language()).unwrap();
+
+        let source_code = r#"
+            @AutoValue
+            public abstract class TestClass {
+                public abstract String getName();
+            }
+            "#;
+        let tree = parser.parse(source_code, None).unwrap();
+        assert!(super::has_autovalue_annotation(
+            // The root node is a 'program' node, so the first child is the 'class_declaration'
+            tree.root_node().child(0).unwrap(),
+            source_code,
+            "TestClass"));
+    }
+
+    #[test]
+    fn test_annotation_when_multiple_present() {
+        let mut parser = super::Parser::new();
+        parser.set_language(&tree_sitter_java::language()).unwrap();
+
+        let source_code = r#"
+            @AutoValue
+            @SomeOtherAnnotation
+            public abstract class TestClass {
+                public abstract String getName();
+            }
+            "#;
+        let tree = parser.parse(source_code, None).unwrap();
+        println!("{}", tree.root_node().child(0).unwrap().to_sexp());
+        assert!(super::has_autovalue_annotation(
+            // The root node is a 'program' node, so the first child is the 'class_declaration'
+            tree.root_node().child(0).unwrap(),
+            source_code,
+            "TestClass"));
+
+        let source_code = r#"
+            @SomeOtherAnnotation
+            @AutoValue
+            public abstract class TestClass {
+                public abstract String getName();
+            }
+            "#;
+        let tree = parser.parse(source_code, None).unwrap();
+        assert!(super::has_autovalue_annotation(
+            // The root node is a 'program' node, so the first child is the 'class_declaration'
+            tree.root_node().child(0).unwrap(),
+            source_code,
+            "TestClass"));
+    }
+
+    #[test]
+    fn test_annotation_when_not_present() {
+        let mut parser = super::Parser::new();
+        parser.set_language(&tree_sitter_java::language()).unwrap();
+
+        let source_code = r#"
+            public abstract class TestClass {
+                public abstract String getName();
+            }
+            "#;
+        let tree = parser.parse(source_code, None).unwrap();
+        assert!(!super::has_autovalue_annotation(
+            // The root node is a 'program' node, so the first child is the 'class_declaration'
+            tree.root_node().child(0).unwrap(),
+            source_code,
+            "TestClass"));
+    }
+
+    #[test]
+    fn test_annotation_when_not_present_other_annotations_present() {
+        let mut parser = super::Parser::new();
+        parser.set_language(&tree_sitter_java::language()).unwrap();
+
+        let source_code = r#"
+            @SomeOtherAnnotation
+            public abstract class TestClass {
+                public abstract String getName();
+            }
+            "#;
+        let tree = parser.parse(source_code, None).unwrap();
+        assert!(!super::has_autovalue_annotation(
+            // The root node is a 'program' node, so the first child is the 'class_declaration'
+            tree.root_node().child(0).unwrap(),
+            source_code,
+            "TestClass"));
+    }
 }
